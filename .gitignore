@@ -48,3 +48,18 @@ Thumbs.db
 *.mov
 *.wmv
 
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.DS_Store
+__pycache__/
+*.py[cod]
+data/
+models/
+checkpoints/
+output/
+outputs/
+log/
+logs/
