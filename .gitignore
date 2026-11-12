@@ -63,3 +63,28 @@ output/
 outputs/
 log/
 logs/
+
+# Licensed third-party assets (SMIL, SMPL, MINI-RGBD: research licences, no redistribution)
+# and generated synthetic data. Never commit these.
+syn_generation/render/smil_web.pkl
+syn_generation/priors/
+syn_generation/smil/
+syn_generation/SMPL_python_v.1.1.0/
+syn_generation/render/MINI-RGBD_web/
+syn_generation/render/bg_img/
+syn_generation/render/bodies/
+syn_generation/render/outputs/
+lsun/
+SMPL_maya/
+
+# SURREAL clone and its licensed clothing textures (never commit)
+surreal/
+syn_generation/render/textures/surreal/
+syn_generation/render/textures_proc/
+
+# SyRIP zips re-downloaded to the repo root (licensed data; never commit)
+/SyRIP.zip
+/syrip_for_train.zip
+settings.local.json
+skip/
+slurm/

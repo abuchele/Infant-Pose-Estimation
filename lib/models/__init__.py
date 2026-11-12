@@ -18,3 +18,4 @@ import models.pose_mobile
 import models.adaptive_pose_hrnet
 import models.adaptive_pose_mobile
 
+import models.adaptive_pose_cnn

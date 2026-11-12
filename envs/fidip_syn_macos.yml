@@ -1,0 +1,31 @@
+# Synthetic-data environment (macOS arm64; also works on Linux CPU nodes).
+# - LSUN export (lsun/data.py): lmdb, opencv
+# - SMIL loading: chumpy 0.70 is needed to unpickle smil_web.pkl; it requires numpy < 1.24
+#   and Python < 3.11 (inspect.getargspec), hence python 3.10 + numpy 1.23.5
+# - rendering: syn_generation/render/generate_synthetic.py (numpy/OpenCV only; opendr 0.78
+#   from the README does not build on Python >= 3.9 / current macOS)
+# - SMIL fitting (smplifyx/main.py): torch, torchgeometry, smplx, configargparse, trimesh
+#   (also needs priors/gmm_08.pkl from SMPLify, not included)
+# chumpy must be installed with --no-build-isolation (its setup.py imports pip), so it is
+# installed after the env is created:
+#   ~/miniforge3/bin/conda env create -f envs/fidip_syn_macos.yml
+#   ~/miniforge3/envs/fidip-syn/bin/pip install --no-build-isolation chumpy==0.70
+name: fidip-syn
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - numpy=1.23.5
+  - scipy=1.15.2
+  - pip:
+    - lmdb==3.0.0
+    - opencv-python-headless==4.10.0.84
+    - pillow==12.3.0
+    - pyyaml==6.0.3
+    - tqdm==4.70.0
+    - torch==2.3.1
+    - torchgeometry==0.1.2
+    - smplx==0.1.28
+    - configargparse==1.9.0
+    - trimesh==5.2.0

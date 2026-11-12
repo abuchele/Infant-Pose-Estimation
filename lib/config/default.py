@@ -89,6 +89,13 @@ _C.TRAIN.BEGIN_EPOCH = 0
 _C.TRAIN.END_EPOCH = 140
 
 _C.TRAIN.LAMBDA = 0.0005
+# Adversarial term variants (only read by lib/core/function_stable.py, which
+# tools/train_seeded.py --stable-adv swaps in). Defaults = original behaviour.
+#   ADV_LOSS 'neg_bce':   loss_p = MSE - LAMBDA * BCE(D(f), domain)       (original, unbounded)
+#   ADV_LOSS 'confusion': loss_p = MSE + LAMBDA * BCE(D(f), 0.5)          (bounded, min at D=0.5)
+#   LOCK_D True: D's parameters get no gradient from the pose update (paper §IV-B Stage II)
+_C.TRAIN.ADV_LOSS = 'neg_bce'
+_C.TRAIN.LOCK_D = False
 
 _C.TRAIN.RESUME = False
 _C.TRAIN.CHECKPOINT = ''

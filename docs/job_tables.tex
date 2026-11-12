@@ -1,0 +1,260 @@
+% Explorer job tables for the FiDIP infant pose reproduction (generated 2026-11-05, paper-recipe tables updated 2026-11-12; portrait layout).
+% Source of every number: MANIFEST.md / AGENT.md, which quote the job logs (logs/<name>-<jobid>.out).
+% AP/AR = COCO OKS AP/AR @[.50:.95] of final_state.pth unless noted.
+% Failed and cancelled jobs (including twins cancelled by design) are omitted (listed in MANIFEST.md). Multi-seed settings are shown as
+% three-seed means; per-seed values are in MANIFEST.md.
+\documentclass[10pt]{article}
+\usepackage[letterpaper,margin=0.75in]{geometry}
+\usepackage{booktabs,threeparttable,array,tabularx}
+\usepackage[T1]{fontenc}
+\newcommand{\job}[1]{\texttt{#1}}
+\newcommand{\na}{--}
+\newcolumntype{J}{>{\raggedright\arraybackslash}p{1.6cm}} % stacked job ids
+\renewcommand{\tabularxcolumn}[1]{>{\raggedright\arraybackslash}p{#1}}
+\setlength{\tabcolsep}{4pt}
+\begin{document}
+
+\section*{Common settings}
+\textbf{Repo recipe} (all training before 2026-11-03): HRNet-W48 $384\times288$ FiDIP
+(\texttt{w48\_384x288\_adam\_lr1e-3\_infant.yaml}), COCO-pose init, first 109 tensors frozen,
+Adam LR $10^{-4}$, batch 20, 20 epochs, LR steps [10, 15], 4 workers, \texttt{gpu-short}, V100-SXM2 32\,GB,
+4 CPU / 32\,GB. Training data \texttt{data/syrip} (200 real + 1000 synthetic); its 1000 synthetic labels were
+later found to be wrong (2026-11-03). Test100 = \texttt{validate\_infant} (100 real images, correct
+\texttt{test11.jpg} unless noted). Four Test100 images are byte-identical to training images (authors' split;
+affects every Test100 number, including the paper's). Failed and cancelled jobs are not listed.
+
+% ---------------------------------------------------------------------------
+\begin{table}[h]\centering\small
+\caption{Setup job (no model results).}
+\begin{tabular}{lllll}
+\toprule
+Job & Script & Resources & State, time & Purpose \\
+\midrule
+\job{11476830} & \texttt{setup\_env.sbatch} & \texttt{short}, 4 CPU / 16\,GB & COMPLETED, 11\,m & Conda env + \texttt{lib/nms} build \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\begin{table}[h]\centering\small
+\begin{threeparttable}
+\caption{Evaluation only of downloaded models (no training).}
+\begin{tabularx}{\linewidth}{l X l l l}
+\toprule
+Job & Weights & Test set & AP & AR \\
+\midrule
+\job{11478043} & released \texttt{hrnet\_fidip.pth} & Test100, wrong \texttt{test11.jpg}\tnote{a} & 0.921 & 0.936 \\
+\job{11478028} & released \texttt{hrnet\_fidip.pth} & duplicate of 11478043\tnote{b} & \na & \na \\
+\job{11479970} & released \texttt{hrnet\_fidip.pth} & Test100 & \textbf{0.936} & \textbf{0.946} \\
+\job{11576022} & released \texttt{hrnet\_fidip.pth} & Test500 & 0.984 & 0.993 \\
+\job{11576022} & COCO init \texttt{w48\_384$\times$288.pth} (zero-shot) & Test100 & 0.885 & 0.900 \\
+\job{11576022} & COCO init \texttt{w48\_384$\times$288.pth} (zero-shot) & Test500 & 0.980 & 0.989 \\
+\midrule
+\multicolumn{3}{l}{Published (README, DarkPose + FiDIP HRNet-W48), Test100} & 0.936 & 0.946 \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}\footnotesize
+\item[a] $2048\times2048$ copy from \texttt{syrip\_for\_train.zip}; annotations expect $1536\times2048$. Superseded by 11479970.
+\item[b] Second submission of the same eval, same output directory; not reported separately.
+\item 11479970 also verified that all 1754 checkpoint keys load. 11576022 evaluated every trained model on Test500 too (Table~\ref{tab:t500}).
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\begin{table}[h]\centering\small
+\begin{threeparttable}
+\caption{Training setups and the parameters each one changes relative to the repo recipe.}
+\label{tab:setups}
+\begin{tabularx}{\linewidth}{l l X l}
+\toprule
+Setup & Script & Parameters & Data \\
+\midrule
+Repo recipe & \texttt{train\_baseline} & HRNet-W48, COCO-pose init; Adam LR $10^{-4}$, batch 20, 20 ep, LR steps [10,15]; $\lambda=0$; no D pre-training; original adversarial term & \texttt{syrip}\tnote{a} \\
+Other backbones & \texttt{train\_cnn} & WRN-50-2 or DenseNet-121 + SimpleBaseline head, ImageNet init & \texttt{syrip} \\
+$\lambda$ sweep & \texttt{train\_lambda} & $\lambda \in \{10^{-4},\, 5\cdot10^{-4},\, 2.5\cdot10^{-3}\}$ & \texttt{syrip} \\
+Seed study & \texttt{train\_seeded} & seeds 1--3; $\lambda \in \{0,\, 5\cdot10^{-4}\}$; D pre-training 0 or 10 ep\tnote{b} & \texttt{syrip} \\
+Stable adversarial & \texttt{train\_stable} & seeds 1--3; D locked during the pose step; neg\_bce or confusion loss; $\lambda \in \{5\cdot10^{-4},\, 2.5\cdot10^{-3},\, 10^{-2}\}$ & \texttt{syrip} \\
+\midrule
+Paper recipe & \texttt{train\_paper} & Adam LR $10^{-3}$, batch 64, 100 ep, LR steps [70,90]\tnote{c}; neg\_bce, D locked; $\lambda \in \{0,\, 5\cdot10^{-4}\}$; D pre-training 0 or 1 ep\tnote{d}; seed 1 & \texttt{syrip\_fix}\tnote{e} \\
+Paper + clothed & \texttt{train\_paper} & as paper recipe & \texttt{proc1k}\tnote{f} \\
+Paper + clothed, matched steps & \texttt{train\_paper} & as paper recipe, but 50 ep, LR steps [35,45] & \texttt{proc1k} \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}\footnotesize
+\item[a] 200 real + 1000 synthetic, wrong synthetic labels. Repo-recipe hardware: \texttt{gpu-short}, V100 32\,GB, 4 CPU / 32\,GB, 1--1.5\,h.
+\item[b] 10-epoch D pre-training at pre-batch 16, 1.5\,h limit.
+\item[c] Our choice; the paper gives no schedule. Paper-recipe hardware: H200 or A100 80\,GB, 8 CPU / 64\,GB, 8 workers.
+\item[d] D pre-training batch 128.
+\item[e] Same images, authors' corrected 2020 synthetic labels (train json md5 \texttt{a867aba7}).
+\item[f] \texttt{data/syrip\_fix\_proc1k}: \texttt{syrip\_fix} + 1000 procedurally clothed SMIL renders (2200 images; epoch = 4000 samples, 2$\times$ \texttt{syrip\_fix}).
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\begin{table}[h]\centering\small
+\begin{threeparttable}
+\caption{Repo-recipe retraining and backbone comparison (Test100, $\lambda=0$, wrong synthetic labels).}
+\begin{tabularx}{\linewidth}{l X l l l l}
+\toprule
+Job & Model & Init & Time & AP & AR \\
+\midrule
+\job{11499751} & HRNet-W48 retrain & COCO pose & 19\,m & 0.920\tnote{a} & 0.933 \\
+\job{11506191} & HRNet-W48 retrain (r2, clean rerun) & COCO pose & 21\,m & 0.911 & 0.924 \\
+\job{11504441} & WRN-50-2 + SimpleBaseline head & ImageNet & 19\,m & 0.673\tnote{a} & 0.717 \\
+\job{11506193} & WRN-50-2 (r2, clean rerun) & ImageNet & 16\,m & 0.675 & 0.718 \\
+\job{11504443} & DenseNet-121 + SimpleBaseline head & ImageNet & 13\,m & 0.616 & 0.674 \\
+\midrule
+\job{11499761} & hidden duplicate of 11499751\tnote{b} & & & \na & \na \\
+\job{11504497} & hidden duplicate of 11504441\tnote{b} & & & \na & \na \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}\footnotesize
+\item[a] Supported by the original job's log; its output files may have been overwritten by the duplicate.
+\item[b] Ran concurrently, resumed from the original's checkpoint and wrote to the same output directories.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\begin{table}[h]\centering\small
+\caption{$\lambda$ sweep (repo recipe, no D pre-training, single unseeded run each, Test100).}
+\begin{tabular}{lllll}
+\toprule
+Job & $\lambda$ & Time & AP & AR \\
+\midrule
+\job{11568463} & $1\cdot10^{-4}$ & 20\,m & 0.916 & 0.926 \\
+\job{11568556} & $5\cdot10^{-4}$ & 20\,m & 0.923 & 0.939 \\
+\job{11568480} & $2.5\cdot10^{-3}$ & 22\,m & 0.868 & 0.891 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\begin{table}[h]\centering\small
+\begin{threeparttable}
+\caption{Seed study (repo recipe), mean over three seeds (see note a).}
+\begin{tabularx}{\linewidth}{X J l l l}
+\toprule
+Setting & Jobs (seeds 1, 2, 3) & Test100 AP & Test100 AR & Test500 AP \\
+\midrule
+A: $\lambda=0$ & \job{11572224} \job{11572259} \job{11572268} & 0.912 (0.004) & 0.924 (0.002) & 0.983 (0.000) \\
+\addlinespace
+B: $\lambda=5\cdot10^{-4}$ & \job{11570596} \job{11570602} \job{11570614} & 0.918 (0.007) & 0.932 (0.007) & 0.984 (0.001) \\
+\addlinespace
+C: $\lambda=5\cdot10^{-4}$, 10-ep D pre-training & \job{11570594} \job{11570600} \job{11570613} & 0.913 (0.002) & 0.929 (0.002) & 0.983 (0.001) \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}\footnotesize
+\item[a] Each value is the mean over seeds 1, 2 and 3 (three jobs per row, one per seed), with the sample standard deviation in parentheses. Per-seed values are in MANIFEST.md. Test500 values from job 11576022.
+\item B $-$ A = +0.006 Test100 AP, not significant (Welch $t$ 1.2--1.5).
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\begin{table}[h]\centering\small
+\begin{threeparttable}
+\caption{Stable adversarial term (repo recipe, D locked during the pose step, no D pre-training), mean over three seeds (see note a).}
+\begin{tabularx}{\linewidth}{X J l l l l}
+\toprule
+Adv.\ loss, $\lambda$ & Jobs (seeds 1, 2, 3) & Test100 AP & Test100 AR & Test500 AP & Test500 AR \\
+\midrule
+neg\_bce, $5\cdot10^{-4}$ & \job{11575662} \job{11575687} \job{11576777} & 0.920 (0.008) & 0.933 (0.008) & 0.984 (0.001) & 0.992 (0.001) \\
+\addlinespace
+confusion, $5\cdot10^{-4}$ & \job{11575632} \job{11575693} \job{11576832} & 0.913 (0.006) & 0.927 (0.004) & 0.983 (0.001) & 0.992 (0.001) \\
+\addlinespace
+confusion, $2.5\cdot10^{-3}$ & \job{11575663} \job{11575698} \job{11577176} & 0.772 (0.121) & 0.834 (0.095) & 0.952 (0.040) & 0.974 (0.022) \\
+\addlinespace
+confusion, $10^{-2}$ & \job{11575689} \job{11576070} \job{11577381} & 0.290 (0.195)\tnote{b} & 0.381 (0.222) & 0.742 (0.121) & 0.830 (0.091) \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}\footnotesize
+\item[a] Each value is the mean over seeds 1, 2 and 3 (three jobs per row, one per seed), with the sample standard deviation in parentheses. Per-seed values are in MANIFEST.md.
+\item[b] Training collapsed in all three seeds.
+\item neg\_bce = the original FiDIP adversarial term; confusion = bounded variant (zero gradient at $D=0.5$).
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\begin{table}[h]\centering\small
+\begin{threeparttable}
+\caption{Test500 evaluation of the earlier weights (job \job{11576022}).}
+\label{tab:t500}
+\begin{tabularx}{\linewidth}{X l l}
+\toprule
+Weights & Test100 AP / AR & Test500 AP / AR \\
+\midrule
+COCO init, zero-shot & 0.885 / 0.900 & 0.980 / 0.989 \\
+Released FiDIP & 0.936 / 0.946 & 0.984 / 0.993 \\
+Retrain r2 (11506191) & 0.911 / 0.924 & 0.983 / 0.993 \\
+$\lambda$ sweep $10^{-4}$ / $5\cdot10^{-4}$ / $2.5\cdot10^{-3}$ & see $\lambda$ table & AP 0.982 / 0.984 / 0.979 \\
+Seed study A / B / C\tnote{a} & see seed table & AP 0.983 / 0.984 / 0.983 \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}\footnotesize
+\item[a] Mean over seeds 1--3 for each setting.
+\item Test500 is saturated (all models 0.979--0.984, zero-shot 0.980); it does not separate models. Stable-adversarial Test500 results are in the stable table.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\begin{table}[h]\centering\small
+\begin{threeparttable}
+\caption{Paper-recipe runs (single seed, seed 1; Test100 final\_state). All completed by 2026-11-08.}
+\label{tab:paper}
+\begin{tabularx}{\linewidth}{l l l l l X l l l}
+\toprule
+Job & Data\tnote{a} & $\lambda$ & D pre. & Ep. & Partition / GPU / limit & Time & AP & AR \\
+\midrule
+\job{11605176} & fix & 0 & 0 & 100 & gpu-short / H200 / 2\,h\tnote{b} & 1\,h\,06\,m & 0.935 & 0.947 \\
+\job{11605184} & fix & $5\cdot10^{-4}$ & 1 ep & 100 & gpu-short / H200 / 2\,h\tnote{b} & 33\,m\tnote{c} & 0.925 & 0.939 \\
+\midrule
+\job{11623210}\tnote{d} & proc1k & 0 & 0 & 100 & gpu / A100 80\,GB / 8\,h & 1\,h\,37\,m & 0.931 & 0.945 \\
+\job{11623213}\tnote{d} & proc1k & $5\cdot10^{-4}$ & 1 ep & 100 & gpu / A100 80\,GB / 8\,h & 1\,h\,42\,m & 0.924 & 0.941 \\
+\midrule
+\job{11652645} & proc1k & 0 & 0 & 50\tnote{e} & gpu-short / H200 / 2\,h & 43\,m & \textbf{0.938} & \textbf{0.951} \\
+\job{11652650} & proc1k & $5\cdot10^{-4}$ & 1 ep & 50\tnote{e} & gpu-short / H200 / 2\,h & 38\,m & 0.932 & 0.947 \\
+\midrule
+\multicolumn{7}{l}{Released FiDIP (\job{11479970})} & 0.936 & 0.946 \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}\footnotesize
+\item[a] fix = \texttt{data/syrip\_fix} (corrected labels); proc1k = \texttt{data/syrip\_fix\_proc1k} (+1000 clothed renders). See Table~\ref{tab:setups}.
+\item[b] Submitted to \texttt{gpu} with 3\,h; moved to \texttt{gpu-short} with 2\,h while pending.
+\item[c] Half the wall time of 11605176 on another H200 node; not investigated. Results and logs are otherwise normal.
+\item[d] A100 twin of an H200 job (11617414, 11617455). Each twin started first and cancelled its pending H200 copy, which therefore is not listed. The A100 twin of 11605184 (11623294) started after 11605184 had finished and exited without training.
+\item[e] LR steps [35,45]; same number of optimizer steps as the 100-epoch \texttt{fix} runs (proc1k epochs are twice as long).
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\begin{table}[h]\centering\small
+\begin{threeparttable}
+\caption{Paper-recipe comparisons (Test100 AP differences, from Table~\ref{tab:paper}; single seed per side).}
+\begin{tabularx}{\linewidth}{X l l}
+\toprule
+Comparison & $\Delta$AP & Jobs \\
+\midrule
+$\lambda=5\cdot10^{-4}$ minus $\lambda=0$; \texttt{fix}, 100 ep & $-0.010$ & 11605184 $-$ 11605176 \\
+$\lambda=5\cdot10^{-4}$ minus $\lambda=0$; proc1k, 100 ep & $-0.007$ & 11623213 $-$ 11623210 \\
+$\lambda=5\cdot10^{-4}$ minus $\lambda=0$; proc1k, 50 ep & $-0.006$ & 11652650 $-$ 11652645 \\
+\addlinespace
+proc1k 50 ep minus \texttt{fix} 100 ep (matched steps); $\lambda=0$ & $+0.003$ & 11652645 $-$ 11605176 \\
+proc1k 50 ep minus \texttt{fix} 100 ep (matched steps); $\lambda=5\cdot10^{-4}$ & $+0.007$ & 11652650 $-$ 11605184 \\
+\addlinespace
+proc1k 100 ep minus 50 ep; $\lambda=0$ & $-0.007$ & 11623210 $-$ 11652645 \\
+proc1k 100 ep minus 50 ep; $\lambda=5\cdot10^{-4}$ & $-0.008$ & 11623213 $-$ 11652650 \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}\footnotesize
+\item All differences are within the seed-to-seed spread measured in the seed study ($\pm$0.004--0.008 AP, sample SD), so none is significant on its own. The $\lambda=5\cdot10^{-4}$ deficit has the same sign in all three pairs.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\end{document}

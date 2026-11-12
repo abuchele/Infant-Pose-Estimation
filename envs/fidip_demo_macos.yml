@@ -1,0 +1,30 @@
+# Local (macOS, Apple Silicon) environment for inference + the Streamlit demo.
+# CPU / MPS only. Versions follow fidip_env.yml (the Explorer training env) where a
+# macOS arm64 build exists; fidip_env.yml itself is linux-64 + CUDA and cannot be used here.
+# Not included: lib/nms (CUDA/Cython build, only needed by the dataset/eval code, not
+# single-image inference) and the syn_generation dependencies.
+#
+#   ~/miniforge3/bin/conda env create -f envs/fidip_demo_macos.yml
+#   conda activate fidip-demo
+name: fidip-demo
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+    - torch==2.3.1
+    - torchvision==0.18.1
+    - numpy==1.26.4
+    - opencv-python==4.10.0.84
+    - pillow==10.3.0
+    - scipy==1.14.0
+    - matplotlib==3.9.1
+    - yacs==0.1.8
+    - json-tricks==3.17.3
+    - pycocotools==2.0.8
+    - easydict==1.13
+    - dsntnn==0.5.3
+    - pyyaml==6.0.1
+    - cython==3.0.10
+    - streamlit
